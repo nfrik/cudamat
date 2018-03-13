@@ -62,6 +62,7 @@ public class MathUtilTest {
 
             //TODO change this method
             MathUtil.lu_factor(inmat,n,ipiv);
+//            MathUtil.lud(inmat,n,ipiv);
 
             long luTime = System.currentTimeMillis();
 

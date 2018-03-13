@@ -1,5 +1,16 @@
 package util;
 
+import org.apache.commons.math3.linear.Array2DRowRealMatrix;
+import org.apache.commons.math3.linear.LUDecomposition;
+import org.apache.commons.math3.linear.RealMatrix;
+import org.nd4j.linalg.api.blas.impl.BaseLapack;
+import org.nd4j.linalg.api.ndarray.INDArray;
+import org.nd4j.linalg.factory.Nd4j;
+import org.nd4j.linalg.jcublas.blas.JcublasLapack;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.Arrays;
 import java.util.Random;
 
 
@@ -7,12 +18,27 @@ public class MathUtil {
 
     private static Random random = new Random();
 
+    private static Logger logger = LoggerFactory.getLogger(BaseLapack.class);
+
+    //    private static CpuLapack lapack;
+    private static JcublasLapack lapack;
+
+
     public static int getrand(int x) {
         int q = random.nextInt();
         if (q < 0)
             q = -q;
         return q % x;
     }
+
+    //ND4J CPU lapack
+    public static JcublasLapack getLapack() {
+        if(lapack==null){
+            lapack = new JcublasLapack();
+        }
+        return lapack;
+    }
+
 
     // Solves the set of n linear equations using a LU factorization
     // previously performed by lu_factor. On input, b[0..n-1] is the right
@@ -134,9 +160,156 @@ public class MathUtil {
         return true;
     }
 
+    public static boolean getrf(INDArray A, int n, INDArray IPIV){
+        //// TODO: 3/5/2017  create info once, big overhead
+
+        INDArray INFO = Nd4j.createArrayFromShapeBuffer(Nd4j.getDataBufferFactory().createInt(1),
+                Nd4j.getShapeInfoProvider().createShapeInformation(new int[] {1, 1}));
+
+//        INDArray IPIV = Nd4j.createArrayFromShapeBuffer(Nd4j.getDataBufferFactory().createInt(n),
+//                Nd4j.getShapeInfoProvider().createShapeInformation(new int[] {1, n}));
+
+        getLapack().sgetrf(n, n, A, IPIV, INFO);
+
+        if(INFO.getInt(new int[]{0}) < 0) {
+            throw new Error("Parameter #" + INFO.getInt(new int[]{0}) + " to getrf() was not valid");
+        } else {
+            if(INFO.getInt(new int[]{0}) > 0) {
+                logger.warn("The matrix is singular - cannot be used for inverse op. Check L matrix at row " + INFO.getInt(new int[]{0}));
+                return false;
+            }
+
+            return true;
+        }
+
+    }
+
+    // Solves the set of n linear equations using a LU factorization
+    // previously performed by lu_factor. On input, b[0..n-1] is the right
+    // hand side of the equations, and on output, contains the solution.
+    public static void lu_solve(INDArray a, int n, INDArray ipvt, double b[]) {
+        int i;
+
+        // find first nonzero b element
+        for (i = 0; i != n; i++) {
+            int row = ipvt.getInt(i)-1;
+
+            double swap = b[row];
+            b[row] = b[i];
+            b[i] = swap;
+            if (swap != 0)
+                break;
+        }
+
+        int bi = i++;
+        for (; i < n; i++) {
+            int row = ipvt.getInt(i)-1;
+            int j;
+            double tot = b[row];
+
+            b[row] = b[i];
+            // forward substitution using the lower triangular matrix
+            for (j = bi; j < i; j++)
+                tot -= a.getDouble(i,j) * b[j];
+            b[i] = tot;
+        }
+        for (i = n - 1; i >= 0; i--) {
+            double tot = b[i];
+
+            // back-substitution using the upper triangular matrix
+            int j;
+            for (j = i + 1; j != n; j++)
+                tot -= a.getDouble(i,j) * b[j];
+            b[i] = tot / a.getDouble(i,i);
+        }
+    }
+
+
+
+    public static void copy_1Darray(int src[], int dest[]){
+        for(int i=0;i<src.length;i++){
+            dest[i]=src[i];
+        }
+    }
+
+    public static void construct_LU(double L[][], double U[][], double LU[][], int n){
+        for(int i=0;i<n;i++){
+            for(int j=0;j<n;j++){
+                if(j>=i){
+                    LU[i][j]=U[i][j];
+                }else{
+                    LU[i][j]=L[i][j];
+                }
+            }
+        }
+    }
+
+    public static void copy_2D(double src[][], double dest[][], int n){
+        for(int i=0;i<n;i++){
+            for(int j=0;j<n;j++){
+                dest[i][j]=src[i][j];
+            }
+        }
+    }
+
+    public static boolean lud(double a[][], int n, int ipvt[]){
+
+//        double[][] data = {{1, 2, 4, 6}, {5, 2, 3, 3}, {1, 2, 3, 5}, {7, 8, 3, 115}};
+
+        RealMatrix matrix = new Array2DRowRealMatrix(a);
+        LUDecomposition lud = new LUDecomposition(matrix);
+        RealMatrix u = lud.getU();
+        if(u == null){
+            return false;
+        }
+        RealMatrix l = lud.getL();
+        RealMatrix p = lud.getP();
+
+        int[] pivot=lud.getPivot();
+
+        double[][] lu = new double[n][n];
+        copy_1Darray(pivot,ipvt);
+        construct_LU(l.getData(),u.getData(),lu,ipvt.length);
+        copy_2D(lu,a,ipvt.length);
+
+
+
+//        System.out.println(l);
+//        System.out.println(u);
+//        System.out.println(p);
+//        System.out.println(pivot.length);
+        return true;
+    }
+
+
     public static int distanceSq(int x1, int y1, int x2, int y2) {
         x2 -= x1;
         y2 -= y1;
         return x2 * x2 + y2 * y2;
+    }
+
+    public static void main(String[] arsg){
+        lapack=getLapack();
+        double mat[][] = {
+                {4,2,-1,3},
+                {3,-4,2,5},
+                {-2,6,-5,-2},
+                {5,1,6,-3}
+        };
+
+        double mat2[][] = {
+                {4,2,-1,3},
+                {3,-4,2,5},
+                {-2,6,-5,-2},
+                {5,1,6,-3}
+        };
+
+        int n =4;
+        int ipvt[]={0,0,0,0};
+        int ipvt2[]=ipvt.clone();
+
+        MathUtil.lu_factor(mat,n,ipvt);
+
+        lud(mat2,n,ipvt2);
     }
 }
