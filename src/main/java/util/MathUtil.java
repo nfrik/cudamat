@@ -3,14 +3,22 @@ package util;
 import org.apache.commons.math3.linear.Array2DRowRealMatrix;
 import org.apache.commons.math3.linear.LUDecomposition;
 import org.apache.commons.math3.linear.RealMatrix;
+import org.apache.commons.math3.linear.SingularMatrixException;
+import org.jblas.Decompose;
+import org.jblas.DoubleMatrix;
+import org.jblas.FloatMatrix;
+import org.jblas.NativeBlas;
+import org.jblas.util.Functions;
+import org.jblas.util.Permutations;
 import org.nd4j.linalg.api.blas.impl.BaseLapack;
 import org.nd4j.linalg.api.ndarray.INDArray;
+import org.nd4j.linalg.cpu.nativecpu.blas.CpuLapack;
 import org.nd4j.linalg.factory.Nd4j;
-import org.nd4j.linalg.jcublas.blas.JcublasLapack;
+//import org.nd4j.linalg.jcublas.blas.JcublasLapack;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Arrays;
+
 import java.util.Random;
 
 
@@ -20,8 +28,8 @@ public class MathUtil {
 
     private static Logger logger = LoggerFactory.getLogger(BaseLapack.class);
 
-    //    private static CpuLapack lapack;
-    private static JcublasLapack lapack;
+        private static CpuLapack lapack;
+//    private static JcublasLapack lapack;
 
 
     public static int getrand(int x) {
@@ -32,9 +40,10 @@ public class MathUtil {
     }
 
     //ND4J CPU lapack
-    public static JcublasLapack getLapack() {
+    public static CpuLapack getLapack() {
         if(lapack==null){
-            lapack = new JcublasLapack();
+//            lapack = new JcublasLapack();
+            lapack = new CpuLapack();
         }
         return lapack;
     }
@@ -160,6 +169,8 @@ public class MathUtil {
         return true;
     }
 
+
+
     public static boolean getrf(INDArray A, int n, INDArray IPIV){
         //// TODO: 3/5/2017  create info once, big overhead
 
@@ -252,7 +263,7 @@ public class MathUtil {
         }
     }
 
-    public static boolean lud(double a[][], int n, int ipvt[]){
+    public static boolean apacheLUD(double a[][], int n, int ipvt[]){
 
 //        double[][] data = {{1, 2, 4, 6}, {5, 2, 3, 3}, {1, 2, 3, 5}, {7, 8, 3, 115}};
 
@@ -281,6 +292,89 @@ public class MathUtil {
         return true;
     }
 
+    public static boolean lu(DoubleMatrix A,int[] piv) {
+        int info = NativeBlas.dgetrf(A.rows, A.columns, A.data, 0, A.rows, piv, 0);
+        if(info!=0){
+            return false;
+        }
+        return true;
+    }
+
+    public static boolean lu(FloatMatrix A,int[] piv) {
+        int info = NativeBlas.sgetrf(A.rows, A.columns, A.data, 0, A.rows, piv, 0);
+        if(info!=0){
+            return false;
+        }
+        return true;
+    }
+
+    private static void decomposeLowerUpper(DoubleMatrix A, DoubleMatrix L, DoubleMatrix U) {
+        for(int i = 0; i < A.rows; ++i) {
+            for(int j = 0; j < A.columns; ++j) {
+                if (i < j) {
+                    U.put(i, j, A.get(i, j));
+                } else if (i == j) {
+                    U.put(i, i, A.get(i, i));
+                    L.put(i, i, 1.0D);
+                } else {
+                    L.put(i, j, A.get(i, j));
+                }
+            }
+        }
+
+    }
+
+    public static boolean jblasLUD(double a[][],int n, int ipvt[]){
+        DoubleMatrix matrix = new DoubleMatrix(a);
+//        LUDecomposition lud = new LUDecomposition(matrix);
+        Decompose.LUDecomposition<DoubleMatrix> output = Decompose.lu(matrix);
+
+
+        for(int i=0;i<n;i++){
+
+            for(int j=0;j<n;j++){
+                a[i][j]=output.l.get(i,j)+output.u.get(i,j);
+                if(output.p.get(i,j)>0){
+                    ipvt[i]=j;
+                }
+
+            }
+            a[i][i]=a[i][i]-1.;
+        }
+
+        return true;
+    }
+
+    public static Decompose.LUDecomposition<DoubleMatrix> jblasLUD(DoubleMatrix dm){
+
+        return Decompose.lu(dm);
+    }
+
+    public static double[][] generateRandomMat(int n){
+        Random rand = new Random();
+        double[][] retMat=new double[n][n];
+        int[] ipiv = new int[n];
+
+        do {
+            for (int i = 0; i < n; i++) {
+                for (int j = 0; j < n; j++) {
+                    retMat[i][j] = rand.nextGaussian();
+                }
+            }
+        }while(!MathUtil.lu_factor(retMat,n,ipiv));
+
+        return retMat;
+    }
+
+    public static double[] generateRandomVec(int n){
+        Random rand = new Random();
+        double[] retVec = new double[n];
+        for(int i=0;i<n;i++){
+            retVec[i] = rand.nextGaussian();
+        }
+        return retVec;
+    }
+
 
     public static int distanceSq(int x1, int y1, int x2, int y2) {
         x2 -= x1;
@@ -288,28 +382,46 @@ public class MathUtil {
         return x2 * x2 + y2 * y2;
     }
 
-    public static void main(String[] arsg){
-        lapack=getLapack();
+//    public static void main(String[] arsg){
+//        lapack=getLapack();
+//        double mat[][] = {
+//                {4,2,-1,3},
+//                {3,-4,2,5},
+//                {-2,6,-5,-2},
+//                {5,1,6,-3}
+//        };
+//
+//        double mat2[][] = {
+//                {4,2,-1,3},
+//                {3,-4,2,5},
+//                {-2,6,-5,-2},
+//                {5,1,6,-3}
+//        };
+//
+//        int n =4;
+//        int ipvt[]={0,0,0,0};
+//        int ipvt2[]=ipvt.clone();
+//
+//        MathUtil.lu_factor(mat,n,ipvt);
+//
+//        apacheLUD(mat2,n,ipvt2);
+//    }
+
+    public static void main(String[] args){
         double mat[][] = {
-                {4,2,-1,3},
-                {3,-4,2,5},
-                {-2,6,-5,-2},
-                {5,1,6,-3}
+                {1,2,3},
+                {1,2,3},
+                {1,2,3}
         };
 
-        double mat2[][] = {
-                {4,2,-1,3},
-                {3,-4,2,5},
-                {-2,6,-5,-2},
-                {5,1,6,-3}
-        };
+        DoubleMatrix dm = new DoubleMatrix(mat);
 
-        int n =4;
-        int ipvt[]={0,0,0,0};
-        int ipvt2[]=ipvt.clone();
+        int [] ipiv = new int[3];
 
-        MathUtil.lu_factor(mat,n,ipvt);
+//        lu_factor(mat,3,ipiv);
 
-        lud(mat2,n,ipvt2);
+        lu(dm,ipiv);
+//        jblasLUD(dm,3,ipiv);
+
     }
 }

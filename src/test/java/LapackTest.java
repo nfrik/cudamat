@@ -1,6 +1,5 @@
 import org.junit.Ignore;
 import org.junit.Test;
-import org.nd4j.jita.conf.CudaEnvironment;
 import org.nd4j.linalg.api.iter.NdIndexIterator;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.factory.Nd4j;
@@ -18,10 +17,7 @@ public class LapackTest {
 
     @Test
     public void dummy(){
-        CudaEnvironment.getInstance().getConfiguration()
-                .allowMultiGPU(false)
-                .setVerbose(true)
-                .enableDebug(true);
+
     }
 
     @Test

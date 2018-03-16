@@ -1,33 +1,14 @@
+import org.jblas.DoubleMatrix;
+import org.jblas.FloatMatrix;
 import util.MathUtil;
 
 import java.util.Random;
 
+import static util.MathUtil.generateRandomMat;
+import static util.MathUtil.generateRandomVec;
+import static util.MathUtil.lu;
+
 public class MathUtilTest {
-
-    public static double[][] generateRandomMat(int n){
-        Random rand = new Random();
-        double[][] retMat=new double[n][n];
-        int[] ipiv = new int[n];
-
-        do {
-            for (int i = 0; i < n; i++) {
-                for (int j = 0; j < n; j++) {
-                    retMat[i][j] = rand.nextGaussian();
-                }
-            }
-        }while(!MathUtil.lu_factor(retMat,n,ipiv));
-
-        return retMat;
-    }
-
-    public static double[] generateRandomVec(int n){
-        Random rand = new Random();
-        double[] retVec = new double[n];
-        for(int i=0;i<n;i++){
-            retVec[i] = rand.nextGaussian();
-        }
-        return retVec;
-    }
 
     public static void main(String args[]){
 
@@ -51,30 +32,60 @@ public class MathUtilTest {
 
         double mat[][] = generateRandomMat(500);
 
-
-        for(int i=2;i<12;i++){
-            int n = (int) Math.round(Math.pow(2,i));
-            double inmat[][] = generateRandomMat(n);
-            double xvec[] = generateRandomVec(n);
+        int [] lst = {4,4,4,8,8,8,16,16,16,32,32,32,64,64,64,128,128,128,512,512,512};
+        for(int n : lst){
+//            int n = (int) Math.round(Math.pow(2,i));
+//            DoubleMatrix jblasmat = DoubleMatrix.randn(n,n);
+            FloatMatrix jblasmat = FloatMatrix.randn(n,n);
+            double inmat_o[][] = new double[n][n];
+            double inmat[][] = new double[n][n];
+            int ipiv_o[] = new int[n];
             int ipiv[] = new int[n];
 
-            long startTime = System.currentTimeMillis();
+            double xvec[] = generateRandomVec(n);
+            double xvec_o[] = new double[n];
+
+            for(int k=0;k<n;k++){
+                for(int j=0;j<n;j++){
+                    inmat[k][j]=inmat_o[k][j]=jblasmat.get(k,j);
+                }
+                xvec_o[k]=xvec[k];
+            }
+
+
+            long startTime = System.nanoTime();
 
             //TODO change this method
-            MathUtil.lu_factor(inmat,n,ipiv);
-//            MathUtil.lud(inmat,n,ipiv);
+//            MathUtil.lu_factor(inmat_o,n,ipiv_o);
+//            MathUtil.apacheLUD(inmat,n,ipiv);
 
-            long luTime = System.currentTimeMillis();
+            long luorig=System.nanoTime();
+            MathUtil.lu_factor(inmat_o,n,ipiv_o);
+            luorig=Math.round((System.nanoTime()-luorig)/1000.);
 
-            //TODO change this method
-            MathUtil.lu_solve(inmat,n,ipiv,xvec);
+            long lublasnoadmin=System.nanoTime();
+//            MathUtil.jblasLUD(jblasmat);
+            lu(jblasmat,ipiv);
+            lublasnoadmin=Math.round((System.nanoTime()-lublasnoadmin)/1000.);
 
-            long curTime = System.currentTimeMillis();
-            long elapsedTimeLUFact = luTime-startTime;
-            long elapsedTimeTotal = curTime - startTime;
-            long elapsedTimeLUSolve = curTime-luTime;
+            long lublasadmin=System.nanoTime();
+//            MathUtil.jblasLUD(inmat,n,ipiv);
+            lublasadmin=Math.round((System.nanoTime()-lublasadmin)/1000.);
 
-            System.out.printf("For n=%d LU_fact time = %dms LU_solve time = %dms Total %dms",n,elapsedTimeLUFact,elapsedTimeLUSolve,elapsedTimeTotal);
+
+//            long luTime = System.nanoTime();
+//
+//            //TODO change this method
+//            MathUtil.lu_solve(inmat,n,ipiv,xvec);
+//            MathUtil.lu_solve(inmat_o,n,ipiv_o,xvec_o);
+//
+//            long curTime = System.nanoTime();
+//            long elapsedTimeLUFact = Math.round((luTime-startTime)/1000.);
+//            long elapsedTimeTotal = Math.round((curTime - startTime)/1000.);
+//            long elapsedTimeLUSolve = Math.round((curTime-luTime)/1000.);
+//            System.out.printf("For n=%d LU_fact time = %dus LU_solve time = %dus Total %dus",n,elapsedTimeLUFact,elapsedTimeLUSolve,elapsedTimeTotal);
+
+            System.out.printf("For n=%d LU_fact_orig time = %dus LU_blas_native time = %dus LU_blas_converted %dus",n,luorig,lublasnoadmin,lublasadmin);
             System.out.println();
         }
 

@@ -22,12 +22,12 @@
         </dependency>
 
 
-
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
             <version>1.7.5</version>
         </dependency>
+
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-log4j12</artifactId>
@@ -35,34 +35,31 @@
         </dependency>
 
 
+        <dependency>
+            <groupId>org.nd4j</groupId>
+            <artifactId>nd4j-native-platform</artifactId>
+            <version>0.9.1</version>
+        </dependency>
+        <dependency>
+            <groupId>org.nd4j</groupId>
+            <artifactId>nd4j-native</artifactId>
+            <version>0.9.1</version>
+        </dependency>
+
 
         <!--<dependency>-->
         <!--<groupId>org.nd4j</groupId>-->
-        <!--<artifactId>nd4j-native-platform</artifactId>-->
-        <!--<version>0.7.2</version>-->
+        <!--<artifactId>nd4j-cuda-8.0</artifactId>-->
+        <!--<version>0.9.1</version>-->
+        <!--&lt;!&ndash;<version>0.8.0</version>&ndash;&gt;-->
         <!--</dependency>-->
+
         <!--<dependency>-->
         <!--<groupId>org.nd4j</groupId>-->
-        <!--<artifactId>nd4j-native</artifactId>-->
-        <!--<version>0.7.2</version>-->
+        <!--<artifactId>nd4j-cuda-8.0-platform</artifactId>-->
+        <!--<version>0.9.1</version>-->
+        <!--&lt;!&ndash;<version>0.8.0</version>&ndash;&gt;-->
         <!--</dependency>-->
-
-
-        <dependency>
-            <groupId>org.nd4j</groupId>
-            <artifactId>nd4j-cuda-8.0</artifactId>
-            <version>0.7.2</version>
-            <!--<version>0.9.1</version>-->
-            <!--<version>0.8.0</version>-->
-        </dependency>
-
-        <dependency>
-            <groupId>org.nd4j</groupId>
-            <artifactId>nd4j-cuda-8.0-platform</artifactId>
-            <version>0.7.2</version>
-            <!--<version>0.9.1</version>-->
-            <!--<version>0.8.0</version>-->
-        </dependency>
 
         <dependency>
             <groupId>org.bytedeco</groupId>
@@ -77,7 +74,11 @@
             <scope>test</scope>
         </dependency>
 
-
+        <dependency>
+            <groupId>org.jblas</groupId>
+            <artifactId>jblas</artifactId>
+            <version>1.2.4</version>
+        </dependency>
 
 
     </dependencies>
